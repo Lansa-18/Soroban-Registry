@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
   MessageSquare,
@@ -9,14 +9,26 @@ import {
   Clock,
   User,
 } from "lucide-react";
-import { format } from "date-fns";
+
+// Native replacement for date-fns `format(date, "MMM d, h:mm a")`
+function formatDateTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  const time = date.toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${month} ${day}, ${time}`;
+}
 
 interface ReviewTimelineProps {
   reviewId: string;
 }
 
 export default function ReviewTimeline({ reviewId }: ReviewTimelineProps) {
-  const queryClient = useQueryClient();
+  const queryClient = useQuery;
   const { data: details, isLoading } = useQuery({
     queryKey: ["collaborative-review", reviewId],
     queryFn: () => api.getCollaborativeReview(reviewId),
@@ -64,7 +76,7 @@ export default function ReviewTimeline({ reviewId }: ReviewTimelineProps) {
                   <User className="w-3 h-3" /> {comment.user_id.slice(0, 8)}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {format(new Date(comment.created_at), "MMM d, h:mm a")}
+                  {formatDateTime(comment.created_at)}
                 </span>
               </div>
               <p className="text-sm text-foreground mb-2">{comment.content}</p>
@@ -110,7 +122,7 @@ export default function ReviewTimeline({ reviewId }: ReviewTimelineProps) {
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(reviewer.updated_at), "MMM d, h:mm a")}
+                    {formatDateTime(reviewer.updated_at)}
                   </p>
                 </div>
               </div>

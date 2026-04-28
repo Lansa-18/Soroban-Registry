@@ -3,15 +3,30 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { AnalyticsEvent } from "@/lib/api";
-import { formatDistanceToNow } from "date-fns";
 import {
   GitCommit,
   ShieldCheck,
   FileCode,
   Settings,
-  AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+
+// Native replacement for date-fns `formatDistanceToNow`
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days !== 1 ? "s" : ""} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months !== 1 ? "s" : ""} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years !== 1 ? "s" : ""} ago`;
+}
 
 interface ContractTimelineProps {
   contractId: string;
@@ -84,9 +99,7 @@ export function ContractTimeline({ contractId }: ContractTimelineProps) {
                 {event.event_type.replace(/_/g, " ")}
               </h4>
               <time className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatDistanceToNow(new Date(event.created_at), {
-                  addSuffix: true,
-                })}
+                {timeAgo(event.created_at)}
               </time>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
