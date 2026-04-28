@@ -1499,6 +1499,24 @@ pub async fn list_contracts(
         Err(err) => return err.into_response(),
     };
 
+    let cursor = if let Some(cursor_str) = &params.cursor {
+        match shared::pagination::Cursor::decode(cursor_str) {
+            Ok(c) => Some(c),
+            Err(err) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "error": "InvalidPaginationCursor",
+                        "message": format!("The provided pagination cursor is invalid: {}", err)
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    } else {
+        None
+    };
+
     let sort_by = params.sort_by.clone().unwrap_or(shared::SortBy::CreatedAt);
     let sort_order = params.sort_order.clone().unwrap_or(shared::SortOrder::Desc);
     let direction = if sort_order == shared::SortOrder::Asc {
@@ -1506,6 +1524,7 @@ pub async fn list_contracts(
     } else {
         "DESC"
     };
+
 
     let mut qb: QueryBuilder<'_, sqlx::Postgres> = QueryBuilder::new(
         "SELECT c.* FROM contracts c LEFT JOIN contract_interactions ci ON c.id = ci.contract_id ",
@@ -1580,26 +1599,55 @@ pub async fn list_contracts(
         qb.push(")");
     }
 
+    // Cursor pagination condition
+    if let Some(cursor) = &cursor {
+        let op = if sort_order == shared::SortOrder::Asc { ">" } else { "<" };
+        qb.push(" AND (c.created_at ");
+        qb.push(op);
+        qb.push(" ");
+        qb.push_bind(cursor.timestamp);
+        qb.push(" OR (c.created_at = ");
+        qb.push_bind(cursor.timestamp);
+        qb.push(" AND c.id ");
+        qb.push(op);
+        qb.push(" ");
+        qb.push_bind(cursor.id);
+        qb.push("))");
+    }
+
     qb.push(" GROUP BY c.id");
     qb.push(" ORDER BY ");
-    match sort_by {
-        shared::SortBy::UpdatedAt => qb.push("c.updated_at "),
-        shared::SortBy::VerifiedAt => qb.push("c.verified_at "),
-        shared::SortBy::LastAccessedAt => qb.push("c.last_accessed_at "),
-        shared::SortBy::Popularity | shared::SortBy::Interactions => qb.push("COUNT(ci.id) "),
-        shared::SortBy::Deployments => {
-            qb.push("SUM(CASE WHEN ci.interaction_type = 'deploy' THEN 1 ELSE 0 END) ")
+    if cursor.is_some() {
+        qb.push("c.created_at ");
+    } else {
+        match sort_by {
+            shared::SortBy::UpdatedAt => qb.push("c.updated_at "),
+            shared::SortBy::VerifiedAt => qb.push("c.verified_at "),
+            shared::SortBy::LastAccessedAt => qb.push("c.last_accessed_at "),
+            shared::SortBy::Popularity | shared::SortBy::Interactions => qb.push("COUNT(ci.id) "),
+            shared::SortBy::Deployments => {
+                qb.push("SUM(CASE WHEN ci.interaction_type = 'deploy' THEN 1 ELSE 0 END) ")
+            }
+            shared::SortBy::Relevance if params.query.is_some() => qb.push("c.created_at "),
+            _ => qb.push("c.created_at "),
         }
-        shared::SortBy::Relevance if params.query.is_some() => qb.push("c.created_at "),
-        _ => qb.push("c.created_at "),
-    };
+    }
     qb.push(direction);
+
     qb.push(", c.id ");
     qb.push(direction);
+
+    // Fetch one extra item to check for next page
+    let fetch_limit = limit + 1;
     qb.push(" LIMIT ");
-    qb.push_bind(limit);
-    qb.push(" OFFSET ");
-    qb.push_bind(offset);
+    qb.push_bind(fetch_limit);
+
+
+    if cursor.is_none() {
+        qb.push(" OFFSET ");
+        qb.push_bind(offset);
+    }
+
 
     let mut contracts: Vec<Contract> = match qb.build_query_as().fetch_all(&state.db).await {
         Ok(rows) => rows,
@@ -1714,7 +1762,20 @@ pub async fn list_contracts(
         Err(err) => return db_internal_error("count contracts", err).into_response(),
     };
 
-    let response = PaginatedResponse::new(contracts, total, page, limit);
+    let mut has_more = contracts.len() > limit as usize;
+    if has_more {
+        contracts.truncate(limit as usize);
+    }
+
+    let mut response = PaginatedResponse::new(contracts, total, page, limit);
+    
+    if has_more {
+        if let Some(last_item) = response.items.last() {
+             let next_cursor = shared::pagination::Cursor::new(last_item.created_at, last_item.id);
+             response.next_cursor = Some(next_cursor.encode());
+        }
+    }
+
     observe_search_query(
         "contracts",
         search_started_at,
@@ -2849,16 +2910,19 @@ pub struct UploadContractSourceRequest {
     pub source_format: String,
 }
 
-/// Response model for contract usage statistics
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-pub struct ContractStatsResponse {
-    /// Contract unique identifier
-    pub contract_id: Uuid,
-    /// Total number of API accesses
-    pub usage_count: i64,
-    /// Timestamp of last access (if available)
-    pub last_accessed_at: Option<chrono::DateTime<chrono::Utc>>,
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct ContractSourceResponse {
+    pub id: Uuid,
+    pub contract_version_id: Uuid,
+    pub source_format: String,
+    pub storage_backend: String,
+    pub storage_key: String,
+    pub source_hash: String,
+    pub source_size: i64,
+    pub source_base64: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, utoipa::IntoParams)]
 pub struct ContractSourceQuery {
     #[serde(default)]
@@ -5681,14 +5745,13 @@ pub async fn get_contract_deployments(
     query_builder.push_bind(&target_uuids);
     query_builder.push(") AND ci.interaction_type = cast('deploy' as text)");
 
-    if let Some(from) = params.from_date {
-        query_builder.push(" AND ci.created_at >= ");
-        query_builder.push_bind(from);
-    }
-    if let Some(to) = params.to_date {
-        query_builder.push(" AND ci.created_at <= ");
-        query_builder.push_bind(to);
-    }
+    let deployments: Vec<ContractDeployment> = sqlx::query_as(
+        "SELECT * FROM contract_deployments WHERE contract_id = $1 ORDER BY deployed_at DESC",
+    )
+    .bind(contract_uuid)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|err| db_internal_error("get contract deployments", err))?;
 
     query_builder.push(" ORDER BY ci.created_at DESC");
     query_builder.push(" LIMIT ");
