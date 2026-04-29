@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Navbar from "@/components/Navbar";
 import CategoryDistributionPie from "@/components/analytics/CategoryDistributionPie";
 import DeploymentTrendGraph from "@/components/analytics/DeploymentTrendGraph";
@@ -420,7 +420,7 @@ export default function AnalyticsDashboard() {
               </select>
             </div>
 
-            <div className="lg:col-span-1 flex items-end">
+            <div className="lg:col-span-1 flex items.end">
               <button
                 onClick={() => fetchData()}
                 className="w-full h-9 rounded-lg border border-border bg-background hover:bg-muted text-sm transition-colors inline-flex items-center justify-center gap-2"

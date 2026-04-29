@@ -1,19 +1,7 @@
-import type { TimePeriod } from '@/types';
+import type { AnalyticsResponse, TimePeriod } from '@/types/analytics';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Local type definition for AnalyticsResponse
-type AnalyticsResponse = {
-  searchTrends: Array<{ date: string; searches: number; uniqueTerms: number }>;
-  topSearchTerms: Array<{ term: string; count: number; growth: number }>;
-  discoveryPaths: {
-    nodes: Array<{ id: string; name: string; category: string }>;
-    links: Array<{ source: string; target: string; value: number }>;
-  };
-  engagementFunnel: Array<{ stage: string; users: number; percentage: number }>;
-  categoryPopularity: Array<{ category: string; searches: number; views: number; deployments: number }>;
-  networkDistribution: Array<{ region: string; network: string; count: number; percentage: number }>;
-};
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 export async function fetchAnalytics(period: TimePeriod): Promise<AnalyticsResponse> {

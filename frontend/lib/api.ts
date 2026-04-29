@@ -22,6 +22,11 @@ import {
   extractErrorData,
   createApiError,
 } from "./errors";
+import type {
+  CollaborativeComment,
+  CollaborativeReviewDetails,
+} from "@/types/models/reviews";
+import type { VerificationLevel } from "@/types/verification";
 
 export type Network = "mainnet" | "testnet" | "futurenet";
 
@@ -69,6 +74,7 @@ export interface Contract {
   publisher_id: string;
   network: Network;
   is_verified: boolean;
+  verification_level?: VerificationLevel;
   category?: string;
   tags: string[];
   popularity_score?: number;
@@ -297,6 +303,8 @@ export interface ContractSearchParams {
   network?: "mainnet" | "testnet" | "futurenet";
   networks?: Array<"mainnet" | "testnet" | "futurenet">;
   verified_only?: boolean;
+  favorites_only?: boolean;
+  favorites_list?: string[];
   category?: string;
   categories?: string[];
   language?: string;
@@ -1088,6 +1096,64 @@ export const api = {
     return handleApiCall<ContractChangelogResponse>(
       () => fetch(`${API_URL}/api/contracts/${id}/changelog`),
       `/api/contracts/${id}/changelog`
+    );
+  },
+
+  async getCollaborativeReview(
+    reviewId: string,
+  ): Promise<CollaborativeReviewDetails> {
+    return handleApiCall<CollaborativeReviewDetails>(
+      () => fetch(`${API_URL}/api/reviews/${reviewId}`),
+      `/api/reviews/${reviewId}`,
+    );
+  },
+
+  async createCollaborativeReview(data: {
+    contract_id: string;
+    version: string;
+    reviewer_ids: string[];
+  }): Promise<CollaborativeReviewDetails["review"]> {
+    return handleApiCall<CollaborativeReviewDetails["review"]>(
+      () =>
+        fetch(`${API_URL}/api/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }),
+      "/api/reviews",
+    );
+  },
+
+  async addCollaborativeComment(
+    reviewId: string,
+    data: Pick<
+      CollaborativeComment,
+      "content" | "line_number" | "abi_path" | "file_path" | "parent_id"
+    >,
+  ): Promise<CollaborativeComment> {
+    return handleApiCall<CollaborativeComment>(
+      () =>
+        fetch(`${API_URL}/api/reviews/${reviewId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }),
+      `/api/reviews/${reviewId}/comments`,
+    );
+  },
+
+  async updateReviewerStatus(
+    reviewId: string,
+    status: "pending" | "approved" | "changes_requested" | string,
+  ): Promise<CollaborativeReviewDetails["review"]> {
+    return handleApiCall<CollaborativeReviewDetails["review"]>(
+      () =>
+        fetch(`${API_URL}/api/reviews/${reviewId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }),
+      `/api/reviews/${reviewId}/status`,
     );
   },
 

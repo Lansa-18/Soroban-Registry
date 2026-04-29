@@ -52,16 +52,23 @@ export interface SemanticContractSearchResponse extends PaginatedResponse<Contra
  * Advanced query types for contract search
  */
 
-export type FieldOperator = 'eq' | 'ne' | 'gt' | 'lt' | 'in' | 'contains' | 'startsWith';
+export type FieldOperator =
+  | "eq"
+  | "ne"
+  | "gt"
+  | "lt"
+  | "in"
+  | "contains"
+  | "starts_with";
 
 export interface QueryCondition {
   field: string;
   operator: FieldOperator;
-  value: unknown;
+  value: string | number | boolean | string[];
 }
 
-export type QueryOperator = 'AND' | 'OR';
+export type QueryOperator = "AND" | "OR";
 
 export type QueryNode =
-  | { type: 'condition'; condition: QueryCondition }
-  | { type: 'group'; operator: QueryOperator; nodes: QueryNode[] };
+  | QueryCondition
+  | { operator: QueryOperator; conditions: QueryNode[] };
