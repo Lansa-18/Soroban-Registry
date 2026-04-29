@@ -1,5 +1,13 @@
 "use client";
 
+<<<<<<< taiwo/hardcoed
+import React from 'react';
+import { CheckCircle2, Info, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
+import type { VerificationStatus } from '@/types/verification';
+import { useTranslation } from '@/lib/i18n/client';
+
+function getBadgeConfig(status: VerificationStatus, level?: string): {
+=======
 <<<<<<< HEAD
 import React from 'react';
 import { CheckCircle2, ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
@@ -28,13 +36,14 @@ function getBadgeConfig(
   level?: VerificationLevel,
 ): {
 >>>>>>> main
+>>>>>>> main
   label: string;
   className: string;
   Icon: React.ComponentType<{ className?: string }>;
   tooltip: string;
 } {
   switch (status) {
-    case "approved":
+    case "approved": {
       const levelLabel = level
         ? ` (${level.charAt(0).toUpperCase() + level.slice(1)})`
         : "";
@@ -49,6 +58,7 @@ function getBadgeConfig(
               ? "Intermediate Verification: Audited code"
               : "Basic Verification: Automated checks passed",
       };
+    }
     case "under_review":
     case "submitted":
       return {
@@ -77,7 +87,7 @@ function getBadgeConfig(
 
 export default function VerificationBadge(props: {
   status: VerificationStatus;
-  level?: VerificationLevel;
+  level?: any;
   size?: "sm" | "md";
 }) {
   const { status, level, size = "sm" } = props;

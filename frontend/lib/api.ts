@@ -22,7 +22,6 @@ import {
   extractErrorData,
   createApiError,
 } from "./errors";
-<<<<<<< HEAD
 
 export type Network = "mainnet" | "testnet" | "futurenet";
 
@@ -470,77 +469,9 @@ export interface DeprecationInfo {
   days_remaining?: number | null;
   dependents_notified: number;
 }
-=======
-import { resilientCall } from "./resilience";
-import { fetchRecentContracts, fetchContractActivity } from "./stellar";
-import type {
-  Network,
-  NetworkStatus,
-  NetworkEndpoints,
-  NetworkInfo,
-  NetworkListResponse,
-  NetworkConfig,
-  Contract,
-  ContractGetResponse,
-  ContractHealth,
-  ContractInteractionResponse,
-  InteractionsQueryParams,
-  InteractionsListResponse,
-  TimelineEntry,
-  TopUser,
-  InteractorStats,
-  DeploymentStats,
-  ContractAnalyticsResponse,
-  ContractVersion,
-  VersionFieldDiff,
-  VersionCompareResponse,
-  RevertVersionRequest,
-  ContractAbiResponse,
-  ContractChangelogEntry,
-  ContractChangelogResponse,
-  RecommendationReason,
-  RecommendedContract,
-  ContractRecommendationsResponse,
-  CollaborativeReview,
-  CollaborativeReviewer,
-  CollaborativeComment,
-  CollaborativeReviewDetails,
-  Publisher,
-  AnalyticsEventType,
-  AnalyticsEvent,
-  ActivityFeedParams,
-  ActivityFeedResponse,
-  PaginatedResponse,
-  DependencyTreeNode,
-  MaintenanceWindow,
-  MaturityLevel,
-  ContractSearchParams,
-  SearchSuggestion,
-  SearchSuggestionsResponse,
-  SearchIntentType,
-  SearchIntent,
-  SemanticSearchMetadata,
-  SemanticContractSearchResponse,
-  PublishRequest,
-  CustomMetricType,
-  MetricCatalogEntry,
-  MetricSeriesPoint,
-  MetricSample,
-  MetricSeriesResponse,
-  DeprecationStatus,
-  ReleaseNotesStatus,
-  FunctionChange,
-  DiffSummary,
-  ReleaseNotesResponse,
-  GenerateReleaseNotesRequest,
-  UpdateReleaseNotesRequest,
-  PublishReleaseNotesRequest,
-  DeprecationInfo,
-} from "../types";
-import type { VerificationLevel } from "../types/verification";
 >>>>>>> main
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 const CATEGORY_SYNONYMS: Record<string, string> = {

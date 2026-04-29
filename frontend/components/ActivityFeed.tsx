@@ -1,5 +1,13 @@
 "use client";
 
+<<<<<<< HEAD
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, AnalyticsEvent, AnalyticsEventType, ActivityFeedResponse } from '@/lib/api';
+import { ContractDeploymentEvent, ContractUpdateEvent } from '@/types/realtime';
+import { useRealtime } from '@/hooks/useRealtime';
+import { formatPublicKey, formatShortenedText } from '@/lib/utils/formatting';
+=======
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
@@ -12,6 +20,7 @@ import type {
 import { api } from "@/lib/api";
 import { useRealtime } from "@/hooks/useRealtime";
 import { formatPublicKey, formatShortenedText } from "@/lib/utils/formatting";
+>>>>>>> main
 import {
   Activity,
   Upload,
@@ -24,6 +33,21 @@ import {
   Clock,
   Zap,
   Tag,
+<<<<<<< HEAD
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n/client';
+import type { TFunction } from 'i18next';
+
+const getEventConfig = (t: TFunction): Record<string, { icon: LucideIcon, label: string, color: string }> => ({
+  contract_published: { icon: Upload, label: t('activityFeed.published'), color: 'text-blue-500 bg-blue-500/10' },
+  contract_verified: { icon: CheckCircle2, label: t('activityFeed.verified'), color: 'text-emerald-500 bg-emerald-500/10' },
+  contract_deployed: { icon: Zap, label: t('activityFeed.deployed'), color: 'text-amber-500 bg-amber-500/10' },
+  version_created: { icon: RefreshCcw, label: t('activityFeed.newVersion'), color: 'text-purple-500 bg-purple-500/10' },
+  contract_updated: { icon: Tag, label: t('activityFeed.updated'), color: 'text-indigo-500 bg-indigo-500/10' },
+  publisher_created: { icon: UserPlus, label: t('activityFeed.newPublisher', 'New Publisher'), color: 'text-pink-500 bg-pink-500/10' },
+=======
   type LucideIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
@@ -63,6 +87,7 @@ const getEventConfig = (t: TFunction): Partial<
     label: t("activityFeed.newPublisher", "New Publisher"),
     color: "text-pink-500 bg-pink-500/10",
   },
+>>>>>>> main
 });
 
 export default function ActivityFeed() {
@@ -97,6 +122,34 @@ export default function ActivityFeed() {
 
   // Handle real-time events
   useEffect(() => {
+<<<<<<< HEAD
+    const handleDeployment = (event: ContractDeploymentEvent) => {
+      // Convert RealtimeEvent to AnalyticsEvent
+      const newEvent: AnalyticsEvent = {
+        id: Math.random().toString(36).substring(7),
+        event_type: 'contract_deployed',
+        contract_id: event.contractId,
+        user_address: event.publisher,
+        network: null,
+        metadata: { name: event.contractName, version: event.version },
+        created_at: event.timestamp,
+      };
+
+      if (eventType === 'all' || eventType === 'contract_deployed') {
+        setItems(prev => [newEvent, ...prev].slice(0, 100));
+      }
+    };
+
+    const handleUpdate = (event: ContractUpdateEvent) => {
+      const newEvent: AnalyticsEvent = {
+        id: Math.random().toString(36).substring(7),
+        event_type: 'contract_updated',
+        contract_id: event.contractId,
+        user_address: null,
+        network: null,
+        metadata: { update_type: event.updateType, ...event.details },
+        created_at: event.timestamp,
+=======
     const handleDeployment = (event: unknown) => {
       const deployment = event as ContractDeploymentEvent;
       const newEvent: AnalyticsEvent = {
@@ -127,6 +180,7 @@ export default function ActivityFeed() {
         network: null,
         metadata: { update_type: update.updateType, ...update.details },
         created_at: update.timestamp || new Date().toISOString(),
+>>>>>>> main
       };
 
       if (eventType === "all" || eventType === "contract_updated") {
@@ -134,8 +188,13 @@ export default function ActivityFeed() {
       }
     };
 
+<<<<<<< HEAD
+    const unsubDeploy = subscribe('contract_deployed', (data: unknown) => handleDeployment(data as ContractDeploymentEvent));
+    const unsubUpdate = subscribe('contract_updated', (data: unknown) => handleUpdate(data as ContractUpdateEvent));
+=======
     const unsubDeploy = subscribe("contract_deployed", handleDeployment);
     const unsubUpdate = subscribe("contract_updated", handleUpdate);
+>>>>>>> main
 
     return () => {
       unsubDeploy();
@@ -283,6 +342,13 @@ export default function ActivityFeed() {
                             href={`/contracts/${item.contract_id}`}
                             className="font-medium text-primary hover:underline flex items-center gap-1"
                           >
+<<<<<<< HEAD
+                            {(item.metadata?.name as string) || formatShortenedText(item.contract_id, 10, '...')}
+                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Link>
+                          {typeof item.metadata?.version === 'string' && (
+                            <span className="text-muted-foreground">v{item.metadata.version}</span>
+=======
                             {metadataName ||
                               formatShortenedText(item.contract_id, 10, "...")}
                             <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -291,6 +357,7 @@ export default function ActivityFeed() {
                             <span className="text-muted-foreground">
                               v{metadataVersion}
                             </span>
+>>>>>>> main
                           )}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
@@ -315,6 +382,13 @@ export default function ActivityFeed() {
                         )}
                       </div>
 
+<<<<<<< HEAD
+                      {item.event_type === 'contract_updated' && typeof item.metadata?.update_type === 'string' && (
+                        <div className="mt-1 text-xs px-2 py-1 rounded bg-muted/50 border border-border inline-block w-fit">
+                          <span className="font-medium">{t('activityFeed.type')}:</span> {item.metadata.update_type}
+                        </div>
+                      )}
+=======
                       {item.event_type === "contract_updated" &&
                         metadataUpdateType && (
                           <div className="mt-1 text-xs px-2 py-1 rounded bg-muted/50 border border-border inline-block w-fit">
@@ -324,6 +398,7 @@ export default function ActivityFeed() {
                             {metadataUpdateType}
                           </div>
                         )}
+>>>>>>> main
                     </div>
                   </div>
                 </div>

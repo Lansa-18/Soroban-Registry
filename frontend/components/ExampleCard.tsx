@@ -55,6 +55,18 @@ export default function ExampleCard({ example }: ExampleCardProps) {
         return;
       }
 
+<<<<<<< HEAD
+      if (avatarBlurHash) {
+        setAvatarPlaceholder(
+          generateBlurHashPlaceholder(avatarBlurHash, {
+            width: 24,
+            height: 24,
+            fallbackColor: avatarFallbackColor,
+          })
+        );
+        return;
+      }
+=======
     if (avatarBlurHash) {
       setAvatarPlaceholder(
         generateBlurHashPlaceholder(avatarBlurHash, {
@@ -65,6 +77,7 @@ export default function ExampleCard({ example }: ExampleCardProps) {
       );
       return;
     }
+>>>>>>> main
 
       setAvatarPlaceholder(generateSolidPlaceholder(avatarFallbackColor));
     });
