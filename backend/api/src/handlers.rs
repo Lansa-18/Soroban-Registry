@@ -1832,6 +1832,60 @@ fn render_contract_export(
     }
 }
 
+fn sanitized_export_filters(filters: ContractSearchParams) -> ContractSearchParams {
+    filters
+}
+
+fn export_artifact_path(job_id: Uuid, format: &ContractExportFormat) -> PathBuf {
+    std::env::temp_dir()
+        .join("soroban-registry")
+        .join("contract-exports")
+        .join(format!("{}.{}", job_id, format))
+}
+
+fn contract_export_response(
+    format: &ContractExportFormat,
+    rendered_count: i64,
+    content: String,
+) -> Response {
+    let content_type = match format {
+        ContractExportFormat::Json => "application/json; charset=utf-8",
+        ContractExportFormat::Yaml => "application/yaml; charset=utf-8",
+        ContractExportFormat::Csv => "text/csv; charset=utf-8",
+    };
+
+    let mut response = content.into_response();
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static(content_type),
+    );
+    response.headers_mut().insert(
+        header::CONTENT_DISPOSITION,
+        axum::http::HeaderValue::from_str(&format!(
+            "attachment; filename=contract-export-{}.{}",
+            rendered_count, format
+        ))
+        .unwrap_or_else(|_| axum::http::HeaderValue::from_static("attachment")),
+    );
+    response
+}
+
+fn build_export_status_response(job: &ContractExportJob) -> ContractExportStatusResponse {
+    ContractExportStatusResponse {
+        job_id: job.job_id,
+        status: job.status.clone(),
+        status_url: format!("/contracts/export/{}", job.job_id),
+        download_url: matches!(job.status, ContractExportJobStatus::Completed)
+            .then(|| format!("/contracts/export/{}/download", job.job_id)),
+        total_count: job.total_count,
+        format: job.format.clone(),
+        requested_at: job.requested_at,
+        completed_at: job.completed_at,
+        filters: job.filters.clone(),
+        error: job.error.clone(),
+    }
+}
+
 fn apply_contract_export_filters<'a>(
     query: &mut QueryBuilder<'a, Postgres>,
     filters: &'a ContractSearchParams,

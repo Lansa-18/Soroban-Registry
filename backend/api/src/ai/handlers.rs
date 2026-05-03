@@ -10,6 +10,7 @@ use axum::{
     extract::{Json, Path, Query, State},
     http::StatusCode,
 };
+use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -72,7 +73,8 @@ pub async fn ai_chat_handler(
 ) -> Result<Json<ChatResponse>, ApiError> {
     // Validate AI is configured
     let ai_service = state.ai_service.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable(
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
             "AI_SERVICE_NOT_CONFIGURED",
             "AI service is not configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY",
         )
@@ -87,7 +89,7 @@ pub async fn ai_chat_handler(
         let ctx = context_manager
             .get_contract_context(contract_id)
             .await
-            .map_err(|e| ApiError::internal_error("CONTEXT_ERROR", e.to_string()))?;
+            .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "CONTEXT_ERROR", e.to_string()))?;
         ctx
     } else {
         None
@@ -110,7 +112,7 @@ pub async fn ai_chat_handler(
     let ai_response = ai_service
         .chat(ai_request)
         .await
-        .map_err(|e| ApiError::internal_error("AI_API_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "AI_API_ERROR", e.to_string()))?;
 
     let response_time = start.elapsed().as_millis() as u64;
 
@@ -270,7 +272,11 @@ pub async fn analyze_contract_handler(
     Query(params): Query<AnalyzeRequest>,
 ) -> Result<Json<AnalyzeResponse>, ApiError> {
     let ai_service = state.ai_service.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "AI_SERVICE_NOT_CONFIGURED",
+            "AI service not configured",
+        )
     })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
@@ -285,7 +291,7 @@ pub async fn analyze_contract_handler(
     )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
+    .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?
     .flatten()
     .ok_or_else(|| {
         ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
@@ -299,17 +305,16 @@ pub async fn analyze_contract_handler(
     )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
+    .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?
     .ok_or_else(|| ApiError::not_found("CONTRACT_NOT_FOUND", "Contract not found"))?;
 
     let ctx = ContractContext {
-        contract_id,
+        contract_id: contract_uuid.to_string(),
         contract_name: contract.name.clone(),
         contract_code,
         description: contract.description,
         category: contract.category,
         tags: contract.tags.iter().map(|t| t.name.clone()).collect(),
-        network: Some(contract.network),
     };
 
     let prompt = PromptBuilder::build_analysis_prompt(
@@ -338,10 +343,10 @@ pub async fn analyze_contract_handler(
     let response = ai_service
         .chat(ai_req)
         .await
-        .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "AI_ERROR", e.to_string()))?;
 
     Ok(Json(AnalyzeResponse {
-        contract_id,
+        contract_id: contract_uuid,
         analysis: response.content,
         model_used: response.model_used,
         response_time_ms: response.response_time_ms,
@@ -355,7 +360,11 @@ pub async fn check_vulnerabilities_handler(
     Query(params): Query<VulnerabilityRequest>,
 ) -> Result<Json<VulnerabilityResponse>, ApiError> {
     let ai_service = state.ai_service.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "AI_SERVICE_NOT_CONFIGURED",
+            "AI service not configured",
+        )
     })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
@@ -369,7 +378,7 @@ pub async fn check_vulnerabilities_handler(
     )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
+    .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?
     .flatten()
     .ok_or_else(|| {
         ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
@@ -394,7 +403,7 @@ pub async fn check_vulnerabilities_handler(
     let response = ai_service
         .chat(ai_req)
         .await
-        .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "AI_ERROR", e.to_string()))?;
 
     Ok(Json(VulnerabilityResponse {
         contract_id,
@@ -411,7 +420,11 @@ pub async fn explain_contract_handler(
     Query(params): Query<ExplainRequest>,
 ) -> Result<Json<ExplainResponse>, ApiError> {
     let ai_service = state.ai_service.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "AI_SERVICE_NOT_CONFIGURED",
+            "AI service not configured",
+        )
     })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
@@ -425,7 +438,7 @@ pub async fn explain_contract_handler(
     )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
+    .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?
     .flatten()
     .ok_or_else(|| {
         ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
@@ -450,7 +463,7 @@ pub async fn explain_contract_handler(
     let response = ai_service
         .chat(ai_req)
         .await
-        .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "AI_ERROR", e.to_string()))?;
 
     Ok(Json(ExplainResponse {
         contract_id,
@@ -467,7 +480,11 @@ pub async fn suggest_code_handler(
     Json(payload): Json<SuggestRequest>,
 ) -> Result<Json<SuggestResponse>, ApiError> {
     let ai_service = state.ai_service.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("AI_SERVICE_NOT_CONFIGURED", "AI service not configured")
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "AI_SERVICE_NOT_CONFIGURED",
+            "AI service not configured",
+        )
     })?;
 
     let contract_uuid = Uuid::parse_str(&contract_id)
@@ -481,7 +498,7 @@ pub async fn suggest_code_handler(
     )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?
+    .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?
     .flatten()
     .ok_or_else(|| {
         ApiError::not_found("CONTRACT_NOT_FOUND", "Contract or source code not found")
@@ -511,7 +528,7 @@ pub async fn suggest_code_handler(
     let response = ai_service
         .chat(ai_req)
         .await
-        .map_err(|e| ApiError::internal_error("AI_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "AI_ERROR", e.to_string()))?;
 
     Ok(Json(SuggestResponse {
         session_id: None,
@@ -534,7 +551,7 @@ pub async fn get_chat_sessions_handler(
     let sessions = context_manager
         .get_user_sessions(user_id, params.limit.unwrap_or(20))
         .await
-        .map_err(|e| ApiError::internal_error("DB_ERROR", e.to_string()))?;
+        .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "DB_ERROR", e.to_string()))?;
 
     Ok(Json(sessions))
 }

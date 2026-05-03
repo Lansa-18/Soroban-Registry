@@ -1,5 +1,6 @@
 use opentelemetry::global;
 use opentelemetry::propagation::Injector;
+use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -36,7 +37,8 @@ pub fn init_tracing(service_name: &str) {
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)
         {
-            Ok(tracer) => {
+            Ok(provider) => {
+                let tracer = provider.tracer(&service_name);
                 tracing_subscriber::registry()
                     .with(env_filter)
                     .with(fmt_layer)

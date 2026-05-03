@@ -478,7 +478,8 @@ pub fn init_json_tracing() {
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)
         {
-            Ok(tracer) => {
+            Ok(provider) => {
+                let tracer = provider.tracer(&service_name);
                 tracing_subscriber::registry()
                     .with(env_filter)
                     .with(fmt_layer)

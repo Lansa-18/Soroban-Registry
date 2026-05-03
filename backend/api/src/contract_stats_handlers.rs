@@ -104,7 +104,7 @@ pub async fn get_contract_stats(
     .bind(period.as_str())
     .bind(period_start)
     .bind(period_end)
-    .fetch_one(&state.pool)
+    .fetch_one(&state.db)
     .await?;
 
     let days_f64 = days as f64;
@@ -283,7 +283,7 @@ fn parse_period(period: &Option<String>) -> ApiResult<StatsPeriod> {
     match period {
         Some(p) => p
             .parse::<StatsPeriod>()
-            .map_err(|e| ApiError::bad_request(&e)),
+            .map_err(|e| ApiError::bad_request("INVALID_PERIOD", e.to_string())),
         None => Ok(StatsPeriod::ThirtyDays),
     }
 }

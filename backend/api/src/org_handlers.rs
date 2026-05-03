@@ -171,7 +171,7 @@ pub async fn check_org_role(
 
     let role = member_row.ok_or(StatusCode::FORBIDDEN)?.0;
 
-    let has_access = match (min_role, role) {
+    let has_access = match (min_role, &role) {
         (OrganizationRole::Admin, OrganizationRole::Admin) => true,
         (OrganizationRole::Member, OrganizationRole::Admin | OrganizationRole::Member) => true,
         (OrganizationRole::Viewer, _) => true,
@@ -293,10 +293,10 @@ pub async fn accept_invitation(
         ON CONFLICT (organization_id, publisher_id) DO UPDATE SET role = EXCLUDED.role
         "#,
     )
-    .bind(invite.get::<Uuid, _>("organization_id"))
+    .bind(invite.organization_id)
     .bind(publisher_id)
-    .bind(invite.get::<OrganizationRole, _>("role"))
-    .execute::<&mut sqlx::Transaction<'_, sqlx::Postgres>>(&mut *tx)
+    .bind(invite.role)
+    .execute(&mut *tx)
     .await
     .map_err(|e| db_internal_error("add_member", e))?;
 

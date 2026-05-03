@@ -122,10 +122,11 @@ async fn fetch_wasm_bytes(
     version: Option<&str>,
 ) -> Result<Vec<u8>, ApiError> {
     // Try to get the WASM hash from the contract version record.
-    let row: Option<(String, Option<String>)> = if let Some(ver) = version {
+    let row: Option<(String, Option<String>, String, String)> = if let Some(ver) = version {
         sqlx::query_as(
-            "SELECT wasm_hash, source_url FROM contract_versions \
-             WHERE contract_id = $1 AND version = $2 LIMIT 1",
+            "SELECT cv.wasm_hash, cs.source_url, cs.storage_backend, cs.storage_key FROM contract_versions cv \
+             LEFT JOIN contract_sources cs ON cs.contract_version_id = cv.id \
+             WHERE cv.contract_id = $1 AND cv.version = $2 LIMIT 1",
         )
         .bind(contract_id)
         .bind(ver)
@@ -134,8 +135,9 @@ async fn fetch_wasm_bytes(
         .map_err(|e| ApiError::internal(format!("DB error: {}", e)))?
     } else {
         sqlx::query_as(
-            "SELECT wasm_hash, source_url FROM contract_versions \
-             WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1",
+            "SELECT cv.wasm_hash, cs.source_url, cs.storage_backend, cs.storage_key FROM contract_versions cv \
+             LEFT JOIN contract_sources cs ON cs.contract_version_id = cv.id \
+             WHERE cv.contract_id = $1 ORDER BY cv.created_at DESC LIMIT 1",
         )
         .bind(contract_id)
         .fetch_optional(&state.db)
@@ -143,22 +145,25 @@ async fn fetch_wasm_bytes(
         .map_err(|e| ApiError::internal(format!("DB error: {}", e)))?
     };
 
-    let (wasm_hash, source_url) = row.ok_or_else(|| {
+    let (wasm_hash, source_url, storage_backend, storage_key) = row.ok_or_else(|| {
         ApiError::not_found(
-            "contract_version",
+            "CONTRACT_VERSION_NOT_FOUND",
             "No verified version found for this contract",
         )
     })?;
 
-    // Attempt to fetch from source storage using the wasm hash as the key.
-    let storage_key = format!("wasm/{}", wasm_hash);
-    match state.source_storage.get(&storage_key).await {
+    // Attempt to fetch from source storage using the persisted storage location.
+    match state
+        .source_storage
+        .retrieve_source(&storage_backend, &storage_key)
+        .await
+    {
         Ok(bytes) => Ok(bytes),
         Err(_) => {
             // Fallback: if the source_url references an uploaded WASM file, try that.
             if let Some(url) = source_url {
                 if url.ends_with(".wasm") {
-                    match state.source_storage.get(&url).await {
+                    match state.source_storage.retrieve_source(&storage_backend, &url).await {
                         Ok(bytes) => return Ok(bytes),
                         Err(_) => {}
                     }
@@ -349,8 +354,8 @@ pub async fn trigger_formal_verification(
 
     if !is_verified {
         return Err(ApiError::bad_request(
-            "Formal verification requires a verified contract. \
-             Run source verification first.",
+            "FORMAL_VERIFICATION_REQUIRES_VERIFIED_CONTRACT",
+            "Formal verification requires a verified contract. Run source verification first.",
         ));
     }
 
