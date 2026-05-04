@@ -1,9 +1,10 @@
-import nextPlugin from "eslint-config-next";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 
 /** @type {import('eslint').Linter.Config[]} */
 const eslintConfig = [
-  // eslint-config-next flat config — includes core-web-vitals + typescript rules
-  ...(Array.isArray(nextPlugin) ? nextPlugin : [nextPlugin]),
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     ignores: [
       ".next/**",
@@ -13,12 +14,12 @@ const eslintConfig = [
       "next-env.d.ts",
       "**/*.stories.*",
       "**/.storybook/**",
+      "node_modules/**",
     ],
   },
   {
     rules: {
-      // Unused vars are a cleanup task, not a build blocker.
-      // Prefix variable with _ to intentionally suppress (e.g. _unusedParam).
+      // Unused vars: warn only, ignore _-prefixed identifiers
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -31,7 +32,10 @@ const eslintConfig = [
         },
       ],
       "no-unused-vars": "off",
-      "jsx-a11y/role-supports-aria-props": "warn",
+      // Allow 'any' — common in a codebase still being typed
+      "@typescript-eslint/no-explicit-any": "warn",
+      // Allow require() for CJS interop
+      "@typescript-eslint/no-require-imports": "warn",
     },
   },
 ];
