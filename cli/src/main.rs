@@ -15,6 +15,7 @@ mod config;
 mod contract_verify;
 mod contracts;
 mod conversions;
+mod cache;
 mod coverage;
 mod dashboard;
 mod deploy;
@@ -859,6 +860,12 @@ pub enum Commands {
         action: PluginCommands,
     },
 
+    /// Manage local cache of registry API responses (#845)
+    Cache {
+        #[command(subcommand)]
+        action: CacheCommands,
+    },
+
     /// External command (may be provided by an installed plugin)
     #[command(external_subcommand)]
     External(Vec<String>),
@@ -1474,6 +1481,74 @@ pub enum ContractCommands {
         /// Output results as machine-readable JSON
         #[arg(long)]
         json: bool,
+    },
+}
+
+/// Sub-commands for the `cache` group (#845)
+#[derive(Debug, Subcommand)]
+pub enum CacheCommands {
+    /// Clear cached entries from disk
+    ///
+    /// Usage: soroban-registry cache clear [--level disk|memory|all] [--key <key>]
+    Clear {
+        /// Cache level to clear: disk (default), memory, all
+        #[arg(long, default_value = "disk")]
+        level: String,
+        /// Clear only the entry matching this specific cache key
+        #[arg(long)]
+        key: Option<String>,
+    },
+
+    /// Show cache statistics and configuration
+    ///
+    /// Usage: soroban-registry cache status [--json]
+    Status {
+        /// Output as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Configure cache settings
+    ///
+    /// Usage: soroban-registry cache configure [--ttl <secs>] [--max-size <bytes>]
+    ///                                         [--compression on|off] [--auto-refresh on|off]
+    Configure {
+        /// Default TTL for cached entries in seconds
+        #[arg(long)]
+        ttl: Option<u64>,
+        /// Maximum disk cache size in bytes (0 = unlimited)
+        #[arg(long)]
+        max_size: Option<u64>,
+        /// Enable or disable compression for disk entries: on | off
+        #[arg(long)]
+        compression: Option<String>,
+        /// Enable or disable automatic refresh of stale entries: on | off
+        #[arg(long)]
+        auto_refresh: Option<String>,
+        /// Output current (or updated) config as JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Remove stale entries and enforce disk size limit
+    ///
+    /// Usage: soroban-registry cache optimize [--json]
+    Optimize {
+        /// Output results as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Export cache entries for analysis
+    ///
+    /// Usage: soroban-registry cache export [--format json|csv] [--include-stale]
+    Export {
+        /// Output format: json (default) or csv
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Include stale (expired) entries in the export
+        #[arg(long)]
+        include_stale: bool,
     },
 }
 
@@ -3026,6 +3101,45 @@ pub async fn dispatch_command(
             )
             .await?;
         }
+        // ── Local cache management (#845) ────────────────────────────────────
+        Commands::Cache { action } => match action {
+            CacheCommands::Clear { level, key } => {
+                log::debug!("Command: cache clear | level={} key={:?}", level, key);
+                cache::clear(&level, key.as_deref())?;
+            }
+            CacheCommands::Status { json } => {
+                log::debug!("Command: cache status | json={}", json);
+                cache::status(json)?;
+            }
+            CacheCommands::Configure {
+                ttl,
+                max_size,
+                compression,
+                auto_refresh,
+                json,
+            } => {
+                log::debug!("Command: cache configure");
+                cache::configure(
+                    ttl,
+                    max_size,
+                    compression.as_deref(),
+                    auto_refresh.as_deref(),
+                    json,
+                )?;
+            }
+            CacheCommands::Optimize { json } => {
+                log::debug!("Command: cache optimize | json={}", json);
+                cache::optimize(json)?;
+            }
+            CacheCommands::Export { format, include_stale } => {
+                log::debug!(
+                    "Command: cache export | format={} include_stale={}",
+                    format,
+                    include_stale
+                );
+                cache::export(&format, include_stale)?;
+            }
+        },
     }
 
     Ok(())
