@@ -12,6 +12,7 @@ mod codegen;
 mod commands;
 mod compare;
 mod config;
+mod contract_register;
 mod contract_verify;
 mod contracts;
 mod conversions;
@@ -1444,6 +1445,21 @@ pub enum KeysCommands {
 /// Sub-commands for the `contract` group (#522)
 #[derive(Debug, Subcommand)]
 pub enum ContractCommands {
+    /// Register one or more contracts in the registry
+    Register {
+        /// Path to a YAML or JSON metadata file
+        #[arg(long)]
+        file: Option<String>,
+
+        /// Enable repeated prompts for multiple contracts
+        #[arg(long)]
+        batch: bool,
+
+        /// Output results as machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Verify a deployed contract's authenticity against the on-chain registry
     ///
     /// Usage: soroban-registry contract verify <address> --network <network> [--json]
@@ -2811,6 +2827,16 @@ pub async fn dispatch_command(
         },
         // ── Contract verify command (#522) ───────────────────────────────────
         Commands::Contract { action } => match action {
+            ContractCommands::Register { file, batch, json } => {
+                log::debug!(
+                    "Command: contract register | file={:?} batch={} json={}",
+                    file,
+                    batch,
+                    json
+                );
+                contract_register::run(&cli.api_url, cfg_network, file.as_deref(), batch, json)
+                    .await?;
+            }
             ContractCommands::Verify {
                 address,
                 network,
