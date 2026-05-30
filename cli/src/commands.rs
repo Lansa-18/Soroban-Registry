@@ -1456,7 +1456,7 @@ pub async fn contract_export(
         filters.push(format!("category={}", category));
     }
     if let Some(since) = since {
-        filters.push(format!("updated_since={}", since));
+        filters.push(format!("updated_from={}", since));
     }
 
     let resolved_format = crate::export::RegistryExportFormat::resolve(Some(format), None, output)?;
