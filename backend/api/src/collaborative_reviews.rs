@@ -58,7 +58,7 @@ pub async fn create_collaborative_review(
         // Trigger notification (Email log simulation)
         let _ = notification_handlers::send_notification(
             State(state.clone()),
-            Json(SendNotificationRequest {
+            crate::validation::ValidatedJson(SendNotificationRequest {
                 contract_id: payload.contract_id,
                 notification_type: "review_assigned".to_string(),
                 recipients: vec![user_id.to_string()],

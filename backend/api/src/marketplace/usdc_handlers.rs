@@ -90,7 +90,7 @@ struct ClaimedIntent {
 }
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
-struct IntentRow {
+pub struct IntentRow {
     id: Uuid,
     contract_id: Uuid,
     plan_id: Uuid,
@@ -344,14 +344,14 @@ pub async fn confirm_intent(
     .await?;
 
     tracing::info!(
-        payment_id = %intent.id,
+        payment_id = %claimed.id,
         license_id = %issued.license.id,
         tx_hash = %req.tx_hash,
         "usdc payment confirmed; license issued"
     );
 
     Ok(Json(ConfirmIntentResponse {
-        payment_id: intent.id,
+        payment_id: claimed.id,
         license: issued,
     }))
 }

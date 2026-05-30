@@ -17,7 +17,7 @@ pub struct ClientBreakerReport {
 
 pub async fn report_client_breaker(
     State(_state): State<AppState>,
-    ValidatedJson(payload): ValidatedJson<ClientBreakerReport>,
+    Json(payload): Json<ClientBreakerReport>,
 ) -> impl IntoResponse {
     let endpoint_label = payload.endpoint.as_str();
     let value = if payload.state.to_lowercase() == "open" {

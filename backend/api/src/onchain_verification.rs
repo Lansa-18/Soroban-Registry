@@ -157,6 +157,7 @@ impl OnChainVerifier {
                     on_chain_code_hash: None,
                     stored_wasm_hash: contract.wasm_hash.clone(),
                     wasm_hash_matches: false,
+                    abi_matches_deployed_contract: false,
                     warnings,
                 };
                 cache
