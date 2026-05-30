@@ -136,6 +136,9 @@ async fn main() -> Result<()> {
     // Create event broadcaster for real-time updates
     let (event_broadcaster, _) = broadcast::channel(100);
 
+    // Initialize feature flags manager
+    let feature_flags = Arc::new(api::feature_flags::FeatureFlagManager::new());
+
     // Create app state
     let is_shutting_down = Arc::new(AtomicBool::new(false));
     // Job engine: initialize for background batch processing
@@ -152,6 +155,7 @@ async fn main() -> Result<()> {
         rate_limit_state.clone(),
         ai_service.clone(),
         event_broadcaster.clone(),
+        feature_flags,
     )
     .await?;
 
@@ -203,6 +207,10 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         health_monitor::run_health_monitor(hm_state, hm_status).await;
     });
+
+    // Create alert manager and spawn system health monitor
+    let alert_mgr = Arc::new(api::alerting::AlertManager::new());
+    api::system_health::spawn_system_health_monitor(pool.clone(), state.cache.clone(), alert_mgr);
 
     let network_state = state.clone();
     tokio::spawn(async move {
